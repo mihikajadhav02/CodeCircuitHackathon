@@ -10,6 +10,7 @@ export interface Activity {
   location: string;
   description: string;
   category: 'attraction' | 'food' | 'transport' | 'accommodation' | 'other';
+  currency?: string;
 }
 
 interface ActivityCardProps {
@@ -77,8 +78,9 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, index, onEdit, on
           {...provided.dragHandleProps}
           className={`
             ${colors.bg} ${colors.hover} ${colors.border}
-            border rounded-xl shadow-sm hover:shadow-md transition-all duration-200
-            ${snapshot.isDragging ? 'shadow-lg ring-2 ring-purple-400 ring-opacity-50' : ''}
+            border rounded-xl shadow-sm transition-all duration-200 ease-in-out
+            ${snapshot.isDragging ? 'shadow-2xl ring-2 ring-purple-500 scale-105 rotate-1 z-50' : 'hover:shadow-md'}
+            ${snapshot.draggingOver ? 'opacity-90' : 'opacity-100'}
           `}
           style={{
             ...provided.draggableProps.style,
@@ -87,11 +89,11 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, index, onEdit, on
               : 'translate(0, 0)',
           }}
         >
-          <div className="p-4">
+          <div className="p-4 relative">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-3">
-                  <div className={`${colors.icon} p-2 rounded-lg`}>
+                  <div className={`${colors.icon} p-2 rounded-lg transform transition-transform ${snapshot.isDragging ? 'scale-110' : ''}`}>
                     <span className="text-xl" role="img" aria-label={activity.category}>
                       {categoryIcons[activity.category]}
                     </span>
@@ -105,7 +107,9 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, index, onEdit, on
                         {activity.category.charAt(0).toUpperCase() + activity.category.slice(1)}
                       </span>
                       <span className="text-gray-500">•</span>
-                      <span className="text-sm text-gray-600">${activity.cost}</span>
+                      <span className="text-sm text-gray-600">
+                        {activity.currency || '₹'} {activity.cost}
+                      </span>
                     </div>
                   </div>
                 </div>

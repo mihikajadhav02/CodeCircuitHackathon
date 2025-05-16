@@ -18,10 +18,12 @@ const ItineraryPlanner: React.FC = () => {
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(null);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [currency, setCurrency] = useState('₹');
 
   const handleTripDetailsSubmit = (details: any) => {
     setTripDetailsSubmitted(true);
     setTotalBudget(details.budget);
+    setCurrency(details.currency);
     
     // Create day plans based on start and end dates
     const start = new Date(details.startDate);
@@ -128,15 +130,15 @@ const ItineraryPlanner: React.FC = () => {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-gray-600">Total Budget</p>
-                    <p className="text-2xl font-bold text-purple-600">${totalBudget}</p>
+                    <p className="text-2xl font-bold text-purple-600">{currency}{totalBudget}</p>
                   </div>
                   <div>
                     <p className="text-gray-600">Spent</p>
-                    <p className="text-2xl font-bold text-pink-600">${currentSpent}</p>
+                    <p className="text-2xl font-bold text-pink-600">{currency}{currentSpent}</p>
                   </div>
                   <div>
                     <p className="text-gray-600">Remaining</p>
-                    <p className="text-2xl font-bold text-green-600">${totalBudget - currentSpent}</p>
+                    <p className="text-2xl font-bold text-green-600">{currency}{totalBudget - currentSpent}</p>
                   </div>
                 </div>
               </div>
@@ -208,6 +210,7 @@ const ItineraryPlanner: React.FC = () => {
                 setEditingActivity(null);
               }}
               initialActivity={editingActivity || undefined}
+              currency={currency}
             />
           )}
         </AnimatePresence>

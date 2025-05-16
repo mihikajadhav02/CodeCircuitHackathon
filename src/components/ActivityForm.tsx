@@ -6,6 +6,7 @@ interface ActivityFormProps {
   onSubmit: (activity: Activity) => void;
   onCancel: () => void;
   initialActivity?: Activity;
+  currency?: string;
 }
 
 const defaultActivity: Activity = {
@@ -17,14 +18,18 @@ const defaultActivity: Activity = {
   location: '',
   description: '',
   category: 'other',
+  currency: '₹',
 };
 
 const ActivityForm: React.FC<ActivityFormProps> = ({
   onSubmit,
   onCancel,
   initialActivity,
+  currency = '₹',
 }) => {
-  const [activity, setActivity] = useState<Activity>(initialActivity || defaultActivity);
+  const [activity, setActivity] = useState<Activity>(
+    initialActivity || { ...defaultActivity, currency }
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +52,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
           {initialActivity ? 'Edit Activity' : 'Add New Activity'}
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
               Activity Title
@@ -114,17 +119,22 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
 
           <div>
             <label htmlFor="cost" className="block text-sm font-medium text-gray-700 mb-1">
-              Cost (USD)
+              Cost
             </label>
-            <input
-              type="number"
-              id="cost"
-              min="0"
-              value={activity.cost}
-              onChange={(e) => setActivity({ ...activity, cost: Number(e.target.value) })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
-              required
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-500">
+                {activity.currency}
+              </span>
+              <input
+                type="number"
+                id="cost"
+                min="0"
+                value={activity.cost}
+                onChange={(e) => setActivity({ ...activity, cost: Number(e.target.value) })}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                required
+              />
+            </div>
           </div>
 
           <div>
