@@ -22,6 +22,14 @@ const defaultActivity: Activity = {
   currency: '₹',
 };
 
+const addMinutesToTime = (time: string, minutes: number): string => {
+  const [hours, mins] = time.split(':').map(Number);
+  const totalMinutes = hours * 60 + mins + minutes;
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMinutes = totalMinutes % 60;
+  return `${String(newHours % 24).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+};
+
 const ActivityForm: React.FC<ActivityFormProps> = ({
   onSubmit,
   onCancel,
@@ -53,14 +61,6 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
   });
 
   const [timeError, setTimeError] = useState<string>('');
-
-  const addMinutesToTime = (time: string, minutes: number): string => {
-    const [hours, mins] = time.split(':').map(Number);
-    const totalMinutes = hours * 60 + mins + minutes;
-    const newHours = Math.floor(totalMinutes / 60);
-    const newMinutes = totalMinutes % 60;
-    return `${String(newHours % 24).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
-  };
 
   const checkTimeOverlap = (newStartTime: string, newEndTime: string): boolean => {
     const start = new Date(`2000/01/01 ${newStartTime}`);
