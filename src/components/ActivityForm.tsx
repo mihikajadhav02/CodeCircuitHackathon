@@ -15,26 +15,12 @@ const defaultActivity: Activity = {
   title: '',
   startTime: '09:00',
   endTime: '10:00',
-  timeRequired: '1 hour',
   cost: 0,
   location: '',
   description: '',
   category: 'other',
   currency: '₹',
 };
-
-const timeOptions = [
-  '15 minutes',
-  '30 minutes',
-  '45 minutes',
-  '1 hour',
-  '1.5 hours',
-  '2 hours',
-  '2.5 hours',
-  '3 hours',
-  '4 hours',
-  'Full day',
-];
 
 const ActivityForm: React.FC<ActivityFormProps> = ({
   onSubmit,
@@ -43,35 +29,49 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
   currency = '₹',
   existingActivities = [],
 }) => {
-  const [activity, setActivity] = useState<Activity>(
-    initialActivity || { ...defaultActivity, currency }
-  );
+  const [activity, setActivity] = useState<Activity>(() => {
+    if (initialActivity) return initialActivity;
+
+    // Find the latest end time from existing activities
+    if (existingActivities.length > 0) {
+      const sortedActivities = [...existingActivities].sort((a, b) => {
+        const timeA = new Date(`2000/01/01 ${a.endTime}`);
+        const timeB = new Date(`2000/01/01 ${b.endTime}`);
+        return timeB.getTime() - timeA.getTime();
+      });
+
+      const latestEndTime = sortedActivities[0].endTime;
+      return {
+        ...defaultActivity,
+        currency,
+        startTime: latestEndTime,
+        endTime: addMinutesToTime(latestEndTime, 60), // Default 1 hour duration
+      };
+    }
+
+    return { ...defaultActivity, currency };
+  });
+
   const [timeError, setTimeError] = useState<string>('');
 
-  const calculateEndTime = (startTime: string, duration: string) => {
-    const [hours, minutes] = startTime.split(':').map(Number);
-    const durationInMinutes = parseDuration(duration);
-    
-    const totalMinutes = hours * 60 + minutes + durationInMinutes;
+  const addMinutesToTime = (time: string, minutes: number): string => {
+    const [hours, mins] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + mins + minutes;
     const newHours = Math.floor(totalMinutes / 60);
     const newMinutes = totalMinutes % 60;
-    
-    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
-  };
-
-  const parseDuration = (duration: string): number => {
-    if (duration === 'Full day') return 24 * 60;
-    const match = duration.match(/(\d+(?:\.\d+)?)\s*(hour|minute)s?/);
-    if (!match) return 60;
-    const [_, value, unit] = match;
-    return unit === 'hour' ? parseFloat(value) * 60 : parseFloat(value);
+    return `${String(newHours % 24).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
   };
 
   const checkTimeOverlap = (newStartTime: string, newEndTime: string): boolean => {
     const start = new Date(`2000/01/01 ${newStartTime}`);
     const end = new Date(`2000/01/01 ${newEndTime}`);
 
-    return existingActivities.some(existingActivity => {
+    if (end <= start) {
+      setTimeError('End time must be after start time');
+      return true;
+    }
+
+    const hasOverlap = existingActivities.some(existingActivity => {
       if (initialActivity && existingActivity.id === initialActivity.id) return false;
       
       const existingStart = new Date(`2000/01/01 ${existingActivity.startTime}`);
@@ -83,21 +83,21 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
         (start <= existingStart && end >= existingEnd)
       );
     });
+
+    if (hasOverlap) {
+      setTimeError('This time slot overlaps with another activity');
+      return true;
+    }
+
+    setTimeError('');
+    return false;
   };
 
   useEffect(() => {
-    if (activity.startTime && activity.timeRequired) {
-      const newEndTime = calculateEndTime(activity.startTime, activity.timeRequired);
-      const hasOverlap = checkTimeOverlap(activity.startTime, newEndTime);
-      
-      if (hasOverlap) {
-        setTimeError('This time slot overlaps with another activity');
-      } else {
-        setTimeError('');
-        setActivity(prev => ({ ...prev, endTime: newEndTime }));
-      }
+    if (activity.startTime && activity.endTime) {
+      checkTimeOverlap(activity.startTime, activity.endTime);
     }
-  }, [activity.startTime, activity.timeRequired]);
+  }, [activity.startTime, activity.endTime]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,27 +154,43 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
             </div>
 
             <div>
-              <label htmlFor="timeRequired" className="block text-sm font-medium text-gray-700 mb-1">
-                Time Required
+              <label htmlFor="endTime" className="block text-sm font-medium text-gray-700 mb-1">
+                End Time
               </label>
-              <select
-                id="timeRequired"
-                value={activity.timeRequired}
-                onChange={(e) => setActivity({ ...activity, timeRequired: e.target.value })}
+              <input
+                type="time"
+                id="endTime"
+                value={activity.endTime}
+                onChange={(e) => setActivity({ ...activity, endTime: e.target.value })}
                 className={`w-full px-4 py-2 border rounded-md focus:ring-purple-500 focus:border-purple-500 
                   ${timeError ? 'border-red-500' : 'border-gray-300'}`}
                 required
-              >
-                {timeOptions.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
           {timeError && (
             <p className="text-sm text-red-600">{timeError}</p>
           )}
+
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            <select
+              id="category"
+              value={activity.category}
+              onChange={(e) => setActivity({ ...activity, category: e.target.value as Activity['category'] })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+              required
+            >
+              <option value="attraction">Attraction</option>
+              <option value="food">Food</option>
+              <option value="transport">Transport</option>
+              <option value="accommodation">Accommodation</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
 
           <div>
             <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
@@ -208,25 +224,6 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
                 required
               />
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-              Category
-            </label>
-            <select
-              id="category"
-              value={activity.category}
-              onChange={(e) => setActivity({ ...activity, category: e.target.value as Activity['category'] })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
-              required
-            >
-              <option value="attraction">Attraction</option>
-              <option value="food">Food</option>
-              <option value="transport">Transport</option>
-              <option value="accommodation">Accommodation</option>
-              <option value="other">Other</option>
-            </select>
           </div>
 
           <div>
