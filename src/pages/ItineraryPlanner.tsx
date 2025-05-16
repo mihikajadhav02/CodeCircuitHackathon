@@ -53,8 +53,29 @@ const ItineraryPlanner: React.FC = () => {
     const sourceDayPlan = newItinerary[sourceDay];
     const [movedActivity] = sourceDayPlan.activities.splice(source.index, 1);
     
+    // Sort activities by start time before inserting
     const destinationDayPlan = newItinerary[destinationDay];
-    destinationDayPlan.activities.splice(destination.index, 0, movedActivity);
+    const activities = [...destinationDayPlan.activities];
+    
+    // If moving within the same day, check for time conflicts
+    if (sourceDay === destinationDay) {
+      // Find the best position based on start time
+      const insertIndex = activities.findIndex(activity => {
+        const currentTime = new Date(`2000/01/01 ${activity.startTime}`);
+        const movedTime = new Date(`2000/01/01 ${movedActivity.startTime}`);
+        return movedTime < currentTime;
+      });
+      
+      if (insertIndex === -1) {
+        activities.push(movedActivity);
+      } else {
+        activities.splice(insertIndex, 0, movedActivity);
+      }
+      
+      destinationDayPlan.activities = activities;
+    } else {
+      destinationDayPlan.activities.splice(destination.index, 0, movedActivity);
+    }
 
     setItinerary(newItinerary);
   };
@@ -165,22 +186,29 @@ const ItineraryPlanner: React.FC = () => {
                     </div>
 
                     <Droppable droppableId={dayIndex.toString()}>
-                      {(provided) => (
+                      {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.droppableProps}
-                          className="space-y-4"
+                          className={`space-y-4 transition-colors duration-200 rounded-lg
+                            ${snapshot.isDraggingOver ? 'bg-purple-50 p-4' : ''}`}
                         >
-                          <AnimatePresence>
-                            {day.activities.map((activity, index) => (
-                              <ActivityCard
-                                key={activity.id}
-                                activity={activity}
-                                index={index}
-                                onEdit={() => handleEditActivity(dayIndex, activity)}
-                                onDelete={(id) => handleDeleteActivity(dayIndex, id)}
-                              />
-                            ))}
+                          <AnimatePresence mode="popLayout">
+                            {day.activities
+                              .sort((a, b) => {
+                                const timeA = new Date(`2000/01/01 ${a.startTime}`);
+                                const timeB = new Date(`2000/01/01 ${b.startTime}`);
+                                return timeA.getTime() - timeB.getTime();
+                              })
+                              .map((activity, index) => (
+                                <ActivityCard
+                                  key={activity.id}
+                                  activity={activity}
+                                  index={index}
+                                  onEdit={() => handleEditActivity(dayIndex, activity)}
+                                  onDelete={(id) => handleDeleteActivity(dayIndex, id)}
+                                />
+                              ))}
                           </AnimatePresence>
                           {provided.placeholder}
                           
@@ -201,7 +229,7 @@ const ItineraryPlanner: React.FC = () => {
 
         {/* Activity Form Modal */}
         <AnimatePresence>
-          {showActivityForm && (
+          {showActivityForm && selectedDayIndex !== null && (
             <ActivityForm
               onSubmit={handleActivitySubmit}
               onCancel={() => {
@@ -211,6 +239,7 @@ const ItineraryPlanner: React.FC = () => {
               }}
               initialActivity={editingActivity || undefined}
               currency={currency}
+              existingActivities={itinerary[selectedDayIndex].activities}
             />
           )}
         </AnimatePresence>

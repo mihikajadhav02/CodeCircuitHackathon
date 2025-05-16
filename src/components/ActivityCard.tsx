@@ -4,8 +4,9 @@ import { Draggable } from '@hello-pangea/dnd';
 export interface Activity {
   id: string;
   title: string;
-  time: string;
-  duration: string;
+  startTime: string;
+  endTime: string;
+  timeRequired: string;
   cost: number;
   location: string;
   description: string;
@@ -81,6 +82,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, index, onEdit, on
             border rounded-xl shadow-sm transition-all duration-200 ease-in-out
             ${snapshot.isDragging ? 'shadow-2xl ring-2 ring-purple-500 scale-105 rotate-1 z-50' : 'hover:shadow-md'}
             ${snapshot.draggingOver ? 'opacity-90' : 'opacity-100'}
+            cursor-grab active:cursor-grabbing
           `}
           style={{
             ...provided.draggableProps.style,
@@ -117,9 +119,9 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, index, onEdit, on
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center text-sm text-gray-600">
                     <span className="mr-2">⏰</span>
-                    <span className="font-medium">{activity.time}</span>
+                    <span className="font-medium">{activity.startTime} - {activity.endTime}</span>
                     <span className="mx-2">•</span>
-                    <span>{activity.duration}</span>
+                    <span>{activity.timeRequired}</span>
                   </div>
                   
                   <div className="flex items-center text-sm text-gray-600">

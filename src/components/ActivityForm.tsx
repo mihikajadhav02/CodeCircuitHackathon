@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Activity } from './ActivityCard';
 
@@ -7,13 +7,15 @@ interface ActivityFormProps {
   onCancel: () => void;
   initialActivity?: Activity;
   currency?: string;
+  existingActivities?: Activity[];
 }
 
 const defaultActivity: Activity = {
   id: Math.random().toString(36).substr(2, 9),
   title: '',
-  time: '09:00',
-  duration: '1 hour',
+  startTime: '09:00',
+  endTime: '10:00',
+  timeRequired: '1 hour',
   cost: 0,
   location: '',
   description: '',
@@ -21,19 +23,87 @@ const defaultActivity: Activity = {
   currency: '₹',
 };
 
+const timeOptions = [
+  '15 minutes',
+  '30 minutes',
+  '45 minutes',
+  '1 hour',
+  '1.5 hours',
+  '2 hours',
+  '2.5 hours',
+  '3 hours',
+  '4 hours',
+  'Full day',
+];
+
 const ActivityForm: React.FC<ActivityFormProps> = ({
   onSubmit,
   onCancel,
   initialActivity,
   currency = '₹',
+  existingActivities = [],
 }) => {
   const [activity, setActivity] = useState<Activity>(
     initialActivity || { ...defaultActivity, currency }
   );
+  const [timeError, setTimeError] = useState<string>('');
+
+  const calculateEndTime = (startTime: string, duration: string) => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const durationInMinutes = parseDuration(duration);
+    
+    const totalMinutes = hours * 60 + minutes + durationInMinutes;
+    const newHours = Math.floor(totalMinutes / 60);
+    const newMinutes = totalMinutes % 60;
+    
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+  };
+
+  const parseDuration = (duration: string): number => {
+    if (duration === 'Full day') return 24 * 60;
+    const match = duration.match(/(\d+(?:\.\d+)?)\s*(hour|minute)s?/);
+    if (!match) return 60;
+    const [_, value, unit] = match;
+    return unit === 'hour' ? parseFloat(value) * 60 : parseFloat(value);
+  };
+
+  const checkTimeOverlap = (newStartTime: string, newEndTime: string): boolean => {
+    const start = new Date(`2000/01/01 ${newStartTime}`);
+    const end = new Date(`2000/01/01 ${newEndTime}`);
+
+    return existingActivities.some(existingActivity => {
+      if (initialActivity && existingActivity.id === initialActivity.id) return false;
+      
+      const existingStart = new Date(`2000/01/01 ${existingActivity.startTime}`);
+      const existingEnd = new Date(`2000/01/01 ${existingActivity.endTime}`);
+
+      return (
+        (start >= existingStart && start < existingEnd) ||
+        (end > existingStart && end <= existingEnd) ||
+        (start <= existingStart && end >= existingEnd)
+      );
+    });
+  };
+
+  useEffect(() => {
+    if (activity.startTime && activity.timeRequired) {
+      const newEndTime = calculateEndTime(activity.startTime, activity.timeRequired);
+      const hasOverlap = checkTimeOverlap(activity.startTime, newEndTime);
+      
+      if (hasOverlap) {
+        setTimeError('This time slot overlaps with another activity');
+      } else {
+        setTimeError('');
+        setActivity(prev => ({ ...prev, endTime: newEndTime }));
+      }
+    }
+  }, [activity.startTime, activity.timeRequired]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(activity);
+    if (!timeError) {
+      onSubmit(activity);
+    }
   };
 
   return (
@@ -69,39 +139,42 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="startTime" className="block text-sm font-medium text-gray-700 mb-1">
                 Start Time
               </label>
               <input
                 type="time"
-                id="time"
-                value={activity.time}
-                onChange={(e) => setActivity({ ...activity, time: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                id="startTime"
+                value={activity.startTime}
+                onChange={(e) => setActivity({ ...activity, startTime: e.target.value })}
+                className={`w-full px-4 py-2 border rounded-md focus:ring-purple-500 focus:border-purple-500 
+                  ${timeError ? 'border-red-500' : 'border-gray-300'}`}
                 required
               />
             </div>
 
             <div>
-              <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
-                Duration
+              <label htmlFor="timeRequired" className="block text-sm font-medium text-gray-700 mb-1">
+                Time Required
               </label>
               <select
-                id="duration"
-                value={activity.duration}
-                onChange={(e) => setActivity({ ...activity, duration: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+                id="timeRequired"
+                value={activity.timeRequired}
+                onChange={(e) => setActivity({ ...activity, timeRequired: e.target.value })}
+                className={`w-full px-4 py-2 border rounded-md focus:ring-purple-500 focus:border-purple-500 
+                  ${timeError ? 'border-red-500' : 'border-gray-300'}`}
                 required
               >
-                <option value="30 mins">30 mins</option>
-                <option value="1 hour">1 hour</option>
-                <option value="2 hours">2 hours</option>
-                <option value="3 hours">3 hours</option>
-                <option value="4 hours">4 hours</option>
-                <option value="Full day">Full day</option>
+                {timeOptions.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
               </select>
             </div>
           </div>
+
+          {timeError && (
+            <p className="text-sm text-red-600">{timeError}</p>
+          )}
 
           <div>
             <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
@@ -180,8 +253,12 @@ const ActivityForm: React.FC<ActivityFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-md
-                       hover:shadow-lg transform transition-all duration-200 hover:scale-105"
+              disabled={!!timeError}
+              className={`px-6 py-2 text-white rounded-md transition-all duration-200
+                ${timeError 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:shadow-lg hover:scale-105'
+                }`}
             >
               {initialActivity ? 'Save Changes' : 'Add Activity'}
             </button>
